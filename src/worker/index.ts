@@ -19,3 +19,12 @@ app.all('/feishu/group_message', requestGroupMessage);
 // app.get('/feishu', lark.adaptDefault('/webhook/event', eventDispatcher, {
 //     autoChallenge:true,
 // }));
+
+app.notFound((c) => {
+    // 如果是 /api/ 路径，返回 JSON 404
+    if (c.req.path.startsWith('/api/')) {
+      return c.json({ error: 'Not Found' }, 404);
+    }
+    // 其他情况可以返回页面或静态资源
+    return c.text('Not Found', 404);
+});
