@@ -17,6 +17,7 @@
   "dependencies": {
     "@larksuiteoapi/node-sdk": "^1.48.0",
     "hono": "4.7.7",
+    "openai": "^5.5.0",
     "react": "19.0.0",
     "react-dom": "19.0.0"
   },

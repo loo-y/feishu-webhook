@@ -21,7 +21,7 @@
 	"vars": {
 		"rainy_night_appId": "cli_a8c070e03b3cd013",
 		"rainy_night_open_id": "ou_a6dd1b28da4ef35f358c1f2a525e4d36"
-	}
+	},
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
@@ -56,4 +56,12 @@
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
 	 */
 	// "services": [{ "binding": "MY_SERVICE", "service": "my-service" }]
+	"triggers": {
+		"crons": [
+			// 10:00 (UTC+8) => 02:00 UTC, 16:00 (UTC+8) => 08:00 UTC
+			"0 2,8 * * 1-5",
+			// 11:30 (UTC+8) => 03:30 UTC, 13:30 (UTC+8) => 05:30 UTC, 18:30 (UTC+8) => 10:30 UTC
+			"30 3,5,10 * * 1-5"
+		]
+	}
 }

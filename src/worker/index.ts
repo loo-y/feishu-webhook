@@ -1,12 +1,13 @@
 import { Hono } from "hono";
 import normal from './feishu/webhook/normal'
-import {requestGroupMessage} from './feishu/webhook/normal'
+import {requestGroupMessage, hydrationReminder } from './feishu/webhook/normal'
+import { Env } from './feishu/webhook/normal'
 // import eventDispatcher from './feishu/webhook/event'
 const app = new Hono<{ Bindings: Env }>();
 // import * as lark from '@larksuiteoapi/node-sdk';
 
 app.get("/api/", (c) => c.json({ name: "Cloudflare" }));
-export default app;
+// import * as lark from '@larksuiteoapi/node-sdk';
 
 app.post('/feishu/webhook/event', normal);
 // 同时支持post 和  get
@@ -28,3 +29,12 @@ app.notFound((c) => {
     // 其他情况可以返回页面或静态资源
     return c.text('Not Found', 404);
 });
+
+
+// Only one default export, with both fetch and scheduled
+export default {
+    fetch: app.fetch,
+    async scheduled(_controller: ScheduledController, env: Env, _ctx: ExecutionContext) {
+        await hydrationReminder(env);
+    },
+};

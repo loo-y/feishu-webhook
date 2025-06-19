@@ -1,6 +1,13 @@
 import { Context } from "hono";
 import { getAccessToken, createUUID, isAtMessage } from "./access";
 import { getChatMessage, createImage } from "../../siliconflow/chat";
+
+export interface Env {
+  rainy_night_appId: string;
+  rainy_night_appSecret: string;
+  siliconflow_apikey: string;
+}
+
 export const requestGroupMessage = async (c: Context) => {
     const envConfig = c.env || {};
     const { rainy_night_appId, rainy_night_appSecret } = envConfig || {};
@@ -39,20 +46,50 @@ export const requestGroupMessage = async (c: Context) => {
     return c.json(result);
 }
 
+// 一个定时触发sendGroupMessage的方法
+export const hydrationReminder = async (env: Env) => {
+    const { rainy_night_appId, rainy_night_appSecret } = env || {};
+    const accessToken = await getAccessToken({app_id: rainy_night_appId, app_secret: rainy_night_appSecret});
+    console.log(`accessToken---->`, accessToken);
+    if(!accessToken){
+        return {
+            code: 500,
+            message: "Internal Server Error"
+        }
+    }
+    const group_id = "oc_89587f96f9ae6428eddebbda70e092db";
+    const hour = new Date().getUTCHours(); // 注意：UTC小时
+    const waterMessage = getHydrationMessageByHour(hour);
+    const messageContent = JSON.stringify({text: waterMessage});
+    const result: Record<string, any> = await sendGroupMessage(
+        group_id,
+        "text",
+        messageContent,
+        accessToken
+    );
+    console.log(`result---->`, JSON.stringify(result)); 
+    return result;
+}
+
+
+
+
 const sendGroupMessage = async(group_id: string, messageType: string, messageContent: string, accessToken: string) =>{
     const url = `https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id`
     console.log(`group_id---->`, group_id);
     console.log(`messageType---->`, messageType);
     console.log(`messageContent---->`, messageContent);
+    const bodyString = JSON.stringify({
+        receive_id: group_id,
+        content: messageContent,
+        msg_type: messageType,
+        uuid: createUUID(),
+    })
+    console.log(`bodyString---->`, bodyString);
     try{
         const response = await fetch(url, {
             method: "POST",
-            body: JSON.stringify({
-                receive_id: group_id,
-                content: messageContent,
-                msg_type: messageType,
-                uuid: createUUID(),
-            }),
+            body: bodyString,
             headers: {
                 "Authorization": `Bearer ${accessToken}`,
                 "Content-Type": "application/json; charset=utf-8"
@@ -262,6 +299,26 @@ const uploadImage = async (accessToken: string, imageUrl: string): Promise<{code
             code: 500,
             message: "Internal Server Error"
         }
+    }
+}
+
+// 根据小时返回不同的提醒文案
+export function getHydrationMessageByHour(hour: number): string {
+    switch (hour) {
+        case 2:
+            return "早安！新的一天开始了，记得喝水哦~";
+        case 3:
+            return "工作两小时啦~ 起来接杯水，舒展肩颈更放松！";
+        case 5:
+            return "午后时光，喝口水唤醒肠胃，再战下午！";
+        case 8:
+            return "下午茶时间，用白开水代替奶茶，抗糖又提神~";
+        case 10:
+            return "下班倒计时！喝口水缓解久坐疲劳，效率up↑";
+        case 11:
+            return "收工前最后提醒！补水助力完美收官，明天见~";
+        default:
+            return "该喝水了";
     }
 }
 
