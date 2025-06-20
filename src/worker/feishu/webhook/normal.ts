@@ -41,7 +41,6 @@ export const requestGroupMessage = async (c: Context) => {
         })
     }
     console.log(`messageText---->`, messageText)
-    const messageContent = JSON.stringify({ text: messageText })
     const result: Record<string, any> = attachAudio ? await sendGroupMessageWithAudio({
         group_id,
         messageText,
@@ -51,7 +50,7 @@ export const requestGroupMessage = async (c: Context) => {
     }) : await sendGroupMessage({
         group_id,
         messageType: 'text',
-        messageContent,
+        messageContent: JSON.stringify({ text: messageText }),
         accessToken,
     })
     return c.json(result)
@@ -59,7 +58,7 @@ export const requestGroupMessage = async (c: Context) => {
 
 // 一个定时触发sendGroupMessage的方法
 export const hydrationReminder = async (env: Env) => {
-    const { rainy_night_appId, rainy_night_appSecret, siliconflow_apikey } = env || {}
+    const { rainy_night_appId, rainy_night_appSecret, siliconflow_apikey, minimax_group_id, minimax_apikey } = env || {}
     const accessToken = await getAccessToken({ app_id: rainy_night_appId, app_secret: rainy_night_appSecret })
     console.log(`accessToken---->`, accessToken)
     if (!accessToken) {
@@ -80,11 +79,18 @@ export const hydrationReminder = async (env: Env) => {
         modelName: 'Qwen/Qwen3-235B-A22B',
     })
     const waterMessage = getAIReminderText || getHydrationMessageByHour(hour)
-    const result: Record<string, any> = await sendGroupMessage({
+    // const result: Record<string, any> = await sendGroupMessage({
+    //     group_id,
+    //     messageType: 'text',
+    //     messageContent: JSON.stringify({ text: waterMessage }),
+    //     accessToken,
+    // })
+    const result = await sendGroupMessageWithAudio({
         group_id,
-        messageType: 'text',
-        messageContent: waterMessage,
+        messageText: waterMessage,
         accessToken,
+        soundAPI_group_id: minimax_group_id,
+        soundAPI_api_key: minimax_apikey,
     })
     console.log(`result---->`, JSON.stringify(result))
     return result
@@ -155,12 +161,12 @@ const sendGroupMessageWithAudio = async ({
         if(soundAPI_group_id && soundAPI_api_key){
             const [result, audioResult] = await Promise.all([
                 (async ()=>{
-                    // await sendGroupMessage({
-                    //     group_id,
-                    //     messageType: 'text',
-                    //     messageContent: JSON.stringify({ text: messageText }),
-                    //     accessToken,
-                    // })
+                    await sendGroupMessage({
+                        group_id,
+                        messageType: 'text',
+                        messageContent: JSON.stringify({ text: messageText }),
+                        accessToken,
+                    })
                     console.log(`start sendGroupMessage ---->`)
                     return {}
                 })(),
@@ -472,8 +478,13 @@ const updateAudio = async ({
     }
     // 将音频数据转换为二进制
     // @ts-ignore
-    const audioBuffer = Buffer.from(audioHexData, 'hex')
-    formData.append('file', audioBuffer)
+    // const audioBuffer = Buffer.from(audioHexData, 'hex')
+    // formData.append('file', audioBuffer)
+
+    const audioBytes = hexToUint8Array(audioHexData);
+    const audioBlob = new Blob([audioBytes], { type: 'audio/mp3' }); // 或 'audio/opus'，根据实际格式
+    formData.append('file', audioBlob, audioName);
+
 
     const uploadResponse = await fetch(url, {
         method: 'POST',
@@ -507,7 +518,7 @@ const updateAudio = async ({
 }
 
 // 根据小时返回不同的提醒文案
-export function getHydrationMessageByHour(hour: number): string {
+function getHydrationMessageByHour(hour: number): string {
     switch (hour) {
         case 2:
             return '早安！新的一天开始了，记得喝水哦~'
@@ -524,4 +535,14 @@ export function getHydrationMessageByHour(hour: number): string {
         default:
             return '该喝水了'
     }
+}
+
+
+const hexToUint8Array = (hex: string) => {
+    if (hex.length % 2 !== 0) return ''
+    const arr = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) {
+        arr[i / 2] = parseInt(hex.slice(i, i + 2), 16);
+    }
+    return arr;
 }
