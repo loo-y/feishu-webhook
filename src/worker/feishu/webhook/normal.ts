@@ -178,7 +178,7 @@ const sendGroupMessageWithAudio = async ({
                         const updateAudioResult = await updateAudio({
                             accessToken,
                             audioHexData: soundMessage.audioHex,
-                            audioName: `water_reminder_${uuid}.mp3`,
+                            audioName: `water_reminder_${uuid}.wav`,
                             audioDuration: soundMessage.audioSeconds,
                         })
                         console.log(`updateAudioResult---->`, updateAudioResult)
@@ -482,7 +482,7 @@ const updateAudio = async ({
     // formData.append('file', audioBuffer)
 
     const audioBytes = hexToUint8Array(audioHexData);
-    const audioBlob = new Blob([audioBytes], { type: 'audio/mp3' }); // 或 'audio/opus'，根据实际格式
+    const audioBlob = new Blob([audioBytes], { type: 'audio/wav' }); // 或 'audio/opus'，根据实际格式
     formData.append('file', audioBlob, audioName);
 
 

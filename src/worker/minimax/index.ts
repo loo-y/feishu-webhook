@@ -27,7 +27,7 @@ interface AudioData {
 
 export const getSoundMessage = async ({ text, group_id, api_key }: { text: string; group_id: string; api_key: string }) => {
     const requestBody = {
-        model: 'speech-02-hd',
+        model: 'speech-02-turbo', // 'speech-02-hd',
         text: text,
         timber_weights: [
             {
@@ -38,14 +38,14 @@ export const getSoundMessage = async ({ text, group_id, api_key }: { text: strin
         voice_setting: {
             voice_id: '',
             speed: 1,
-            pitch: 0,
+            pitch: -1,
             vol: 1,
             latex_read: false,
         },
         audio_setting: {
-            sample_rate: 32000,
-            bitrate: 128000,
-            format: 'mp3',
+            sample_rate: 32000, //32000,
+            bitrate: 128000, // 128000,
+            format: 'wav',
         },
         language_boost: 'auto',
     }
