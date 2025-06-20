@@ -1,16 +1,19 @@
 import { Context } from 'hono'
 import { getAccessToken, createUUID, isAtMessage } from './access'
 import { getChatMessage, createImage } from '../../siliconflow/chat'
+import { getSoundMessage } from '../../minimax/index'
 
 export interface Env {
     rainy_night_appId: string
     rainy_night_appSecret: string
     siliconflow_apikey: string
+    minimax_group_id: string
+    minimax_apikey: string
 }
 
 export const requestGroupMessage = async (c: Context) => {
     const envConfig = c.env || {}
-    const { rainy_night_appId, rainy_night_appSecret } = envConfig || {}
+    const { rainy_night_appId, rainy_night_appSecret, minimax_group_id, minimax_apikey } = envConfig || {}
     const accessToken = await getAccessToken({ app_id: rainy_night_appId, app_secret: rainy_night_appSecret })
     if (!accessToken) {
         return c.json({
@@ -18,15 +21,17 @@ export const requestGroupMessage = async (c: Context) => {
             message: 'Internal Server Error',
         })
     }
-    let messageText, group_id
+    let messageText, group_id, attachAudio = false;
     if (c.req.method === 'GET') {
         const queryParams = c.req.query()
         messageText = queryParams?.message_text
         group_id = queryParams?.group_id
+        attachAudio = queryParams?.attach_audio == "1"
     } else if (c.req.method === 'POST') {
         const body = await c.req.json()
         messageText = body?.messageText
         group_id = body?.groupId
+        attachAudio = body?.attachAudio == true
     }
 
     if (!messageText || !group_id) {
@@ -37,7 +42,18 @@ export const requestGroupMessage = async (c: Context) => {
     }
     console.log(`messageText---->`, messageText)
     const messageContent = JSON.stringify({ text: messageText })
-    const result: Record<string, any> = await sendGroupMessage(group_id, 'text', messageContent, accessToken)
+    const result: Record<string, any> = attachAudio ? await sendGroupMessageWithAudio({
+        group_id,
+        messageText,
+        accessToken,
+        soundAPI_group_id: minimax_group_id,
+        soundAPI_api_key: minimax_apikey,
+    }) : await sendGroupMessage({
+        group_id,
+        messageType: 'text',
+        messageContent,
+        accessToken,
+    })
     return c.json(result)
 }
 
@@ -64,13 +80,25 @@ export const hydrationReminder = async (env: Env) => {
         modelName: 'Qwen/Qwen3-235B-A22B',
     })
     const waterMessage = getAIReminderText || getHydrationMessageByHour(hour)
-    const messageContent = JSON.stringify({ text: waterMessage })
-    const result: Record<string, any> = await sendGroupMessage(group_id, 'text', messageContent, accessToken)
+    const result: Record<string, any> = await sendGroupMessage({
+        group_id,
+        messageType: 'text',
+        messageContent: waterMessage,
+        accessToken,
+    })
     console.log(`result---->`, JSON.stringify(result))
     return result
 }
 
-const sendGroupMessage = async (group_id: string, messageType: string, messageContent: string, accessToken: string) => {
+
+const sendGroupMessage = async ({
+    group_id,
+    messageContent,
+    messageType,
+    accessToken,
+}:{
+    group_id: string, messageType: string, messageContent: string, accessToken: string
+}) => {
     const url = `https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id`
     console.log(`group_id---->`, group_id)
     console.log(`messageType---->`, messageType)
@@ -103,6 +131,87 @@ const sendGroupMessage = async (group_id: string, messageType: string, messageCo
             code: 500,
             message: 'Internal Server Error',
         }
+    }
+}
+
+
+const sendGroupMessageWithAudio = async ({
+    group_id,
+    messageText,
+    accessToken,
+    soundAPI_group_id,
+    soundAPI_api_key,
+}: {
+    group_id: string, 
+    messageText: string, 
+    accessToken: string,
+    soundAPI_group_id: string,
+    soundAPI_api_key: string,
+}) => {
+    console.log(`sendGroupMessageWithAudio messageText---->`, messageText)
+    console.log(`sendGroupMessageWithAudio soundAPI_group_id---->`, soundAPI_group_id)
+    const uuid = createUUID()
+    try {
+        if(soundAPI_group_id && soundAPI_api_key){
+            const [result, audioResult] = await Promise.all([
+                (async ()=>{
+                    // await sendGroupMessage({
+                    //     group_id,
+                    //     messageType: 'text',
+                    //     messageContent: JSON.stringify({ text: messageText }),
+                    //     accessToken,
+                    // })
+                    console.log(`start sendGroupMessage ---->`)
+                    return {}
+                })(),
+                (async ()=>{
+                    console.log(`start getSoundMessage ---->`)
+                    const soundMessage = await getSoundMessage({ text: messageText, group_id: soundAPI_group_id, api_key: soundAPI_api_key })
+                    if(soundMessage?.audioHex){
+                        console.log(`soundMessage---->`, `success`)
+                        const updateAudioResult = await updateAudio({
+                            accessToken,
+                            audioHexData: soundMessage.audioHex,
+                            audioName: `water_reminder_${uuid}.mp3`,
+                            audioDuration: soundMessage.audioSeconds,
+                        })
+                        console.log(`updateAudioResult---->`, updateAudioResult)
+                        if(updateAudioResult?.file_key){
+                            
+                            const audioResult = await sendGroupMessage({
+                                group_id,
+                                messageType: 'audio',
+                                messageContent: JSON.stringify({ file_key: updateAudioResult.file_key }),
+                                accessToken,
+                            })
+                            return audioResult
+                        }
+                    }
+
+                    return {
+                        audioCode: -1,
+                        audioMessage: 'Internal Server Error',
+                    }
+                })(),
+            ])
+
+            return {
+                ...result,
+                ...audioResult,
+            }
+        }
+
+    } catch (error) {
+        console.log(`error--->`, String(error))
+        return {
+            code: 500,
+            message: 'Internal Server Error',
+        }
+    }
+
+    return {
+        code: 500,
+        message: 'Internal Server Error',
     }
 }
 
@@ -163,9 +272,9 @@ const handleReplyMessage = async (
             const { text } = contentJson
             // 如果text中包含 "createImage"，则发送图片消息
             if (text.includes('createImage:')) {
-                await sendImageMessage(text.replace('createImage:', ''), message_id, envConfig)
+                await replyImageMessage(text.replace('createImage:', ''), message_id, envConfig)
             } else {
-                await sendTextMessage(text, message_id, envConfig)
+                await replyTextMessage(text, message_id, envConfig)
             }
         } catch (error) {
             console.error(error)
@@ -204,7 +313,7 @@ const replyMessage = async (messageType: string, messageContent: string, message
     }
 }
 
-const sendTextMessage = async (
+const replyTextMessage = async (
     messageText: string,
     message_id: string,
     envConfig: Record<string, string>
@@ -237,7 +346,7 @@ const sendTextMessage = async (
 }
 
 // 发送图片消息， 需要先上传图片，获取图片的key，然后以此key发送图片消息
-const sendImageMessage = async (
+const replyImageMessage = async (
     messageText: string,
     message_id: string,
     envConfig: Record<string, string>
@@ -312,6 +421,84 @@ const uploadImage = async (
             image_key: uploadData.data?.image_key,
         }
     } else {
+        return {
+            code: 500,
+            message: 'Internal Server Error',
+        }
+    }
+}
+
+
+// const sendAudioMessage = async (
+//     messageText: string,
+//     message_id: string,
+//     envConfig: Record<string, string>
+// ): Promise<Record<string, any>> => {
+//     const { rainy_night_appId, rainy_night_appSecret, siliconflow_apikey } = envConfig || {}
+//     const accessToken = await getAccessToken({ app_id: rainy_night_appId, app_secret: rainy_night_appSecret })
+//     if (!accessToken) {
+//         return {
+//             code: 500,
+//             message: 'Internal Server Error',
+//         }
+//     }
+// }
+
+const updateAudio = async ({
+    accessToken,
+    audioHexData,
+    audioName,
+    audioDuration,
+}: {
+    accessToken: string,
+    audioHexData: string,
+    audioName: string,
+    audioDuration?: number,
+}) => {
+    if (!accessToken) {
+        return {
+            code: 500,
+            message: 'Internal Server Error',
+        }
+    }
+
+    try{
+    const url = `https://open.feishu.cn/open-apis/im/v1/files`
+    const formData = new FormData()
+    formData.append('file_type', 'opus')
+    formData.append('file_name', audioName)
+    if(audioDuration){
+        formData.append('duration', audioDuration.toString())
+    }
+    // 将音频数据转换为二进制
+    // @ts-ignore
+    const audioBuffer = Buffer.from(audioHexData, 'hex')
+    formData.append('file', audioBuffer)
+
+    const uploadResponse = await fetch(url, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            // 不要手动设置 Content-Type
+        },
+        body: formData,
+    })
+    const uploadData: Record<string, any> = await uploadResponse.json()
+    console.log(`updateAudioResult---->`, uploadData)
+    if (uploadData?.data?.file_key) {
+        return {
+            code: 200,
+            message: 'success',
+            file_key: uploadData.data?.file_key,
+        }
+    } else {
+        return {
+            code: 500,
+            message: 'Internal Server Error',
+        }
+    }
+    } catch (error) {
+        console.log(`updateAudio error--->`, String(error))
         return {
             code: 500,
             message: 'Internal Server Error',
