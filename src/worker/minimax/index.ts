@@ -38,7 +38,7 @@ export const getSoundMessage = async ({ text, group_id, api_key }: { text: strin
         voice_setting: {
             voice_id: '',
             speed: 1,
-            pitch: -1,
+            pitch: 0,
             vol: 1,
             latex_read: false,
         },

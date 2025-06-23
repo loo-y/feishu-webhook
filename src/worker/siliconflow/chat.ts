@@ -42,7 +42,7 @@ export const getChatMessage = async ({
         console.log(`chat_return---->`, data?.choices[0]?.message?.content)
         return data?.choices[0]?.message?.content || ''
     } catch (error) {
-        console.log(`getChatMessage error--->`)
+        console.log(`getChatMessage error--->`, String(error))
     }
     return ''
 }

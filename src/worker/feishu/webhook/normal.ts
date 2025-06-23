@@ -11,6 +11,45 @@ export interface Env {
     minimax_apikey: string
 }
 
+export const requestSingleMessage = async (c: Context) => {
+    const envConfig = c.env || {}
+    const { rainy_night_appId, rainy_night_appSecret, minimax_group_id, minimax_apikey } = envConfig || {}
+    const accessToken = await getAccessToken({ app_id: rainy_night_appId, app_secret: rainy_night_appSecret })
+    if (!accessToken) {
+        return c.json({
+            code: 500,
+            message: 'Internal Server Error',
+        })
+    }
+    let messageText, email, attachAudio = false;
+    if (c.req.method === 'GET') {
+        const queryParams = c.req.query()
+        messageText = queryParams?.message_text
+        email = queryParams?.email
+        attachAudio = queryParams?.attach_audio == "1"
+    } else if (c.req.method === 'POST') {
+        const body = await c.req.json()
+        messageText = body?.messageText
+        email = body?.email
+        attachAudio = body?.attachAudio == true
+    }
+
+    if(!messageText || !email){
+        return c.json({
+            code: 500,
+            message: 'Internal Server Error',
+        })
+    }
+
+    const result = await sendMessageByEmail({
+        messageType: 'text',
+        messageContent: JSON.stringify({ text: messageText }),
+        userEmail: email,
+        accessToken,
+    })
+    return c.json(result)
+}
+
 export const requestGroupMessage = async (c: Context) => {
     const envConfig = c.env || {}
     const { rainy_night_appId, rainy_night_appSecret, minimax_group_id, minimax_apikey } = envConfig || {}
@@ -289,6 +328,41 @@ const handleReplyMessage = async (
     return {
         code: 200,
         message: 'success',
+    }
+}
+
+// 和 replyMessage的区别是主动发起消息，而不是回复消息
+// 单聊需要用户在应用的可用范围内，群聊需要用户在群内
+const sendMessageByEmail = async ({
+    messageType,
+    messageContent,
+    userEmail,
+    accessToken,
+}: {
+    messageType: string, messageContent: string, userEmail: string, accessToken: string}) => {
+    const url = `https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=email`
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            body: JSON.stringify({
+                receive_id: userEmail,
+                content: messageContent,
+                msg_type: messageType,
+                uuid: createUUID(),
+            }),
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json; charset=utf-8',
+            },
+        })
+        const data: Record<string, any> = await response.json()
+        return data
+    } catch (error) {
+        console.log(`error--->`, String(error))
+        return {
+            code: 500,
+            message: 'Internal Server Error',
+        }
     }
 }
 
