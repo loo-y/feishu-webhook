@@ -1,3 +1,4 @@
+import { voices } from './constants'
 export const getChatMessage = async ({
     message,
     token,
@@ -91,12 +92,10 @@ export const createImage = async ({
     }
 }
 
-
-const songyi_voice_004 = 'speech:songyivoice004:clwx0imsh004t12vfvu9wsc84:wxokarljymursdgzhlub';
 export const getSoundMessage = async ({
     text,
     token,
-    voice = songyi_voice_004, // 'FunAudioLLM/CosyVoice2-0.5B:claire',
+    voice = voices.songyi_voice_004, // 'FunAudioLLM/CosyVoice2-0.5B:claire',
     model = 'FunAudioLLM/CosyVoice2-0.5B',
     sample_rate = 48000,
     stream = false,

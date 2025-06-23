@@ -43,12 +43,13 @@ export const requestSingleMessage = async (c: Context) => {
         })
     }
 
-    const result = attachAudio ?await sendSingleMessageByEmailWithAudio({
+    const result = attachAudio ? await sendSingleMessageByEmailWithAudio({
         messageText: messageText,
         userEmail: email,
         accessToken,
-        soundAPI_group_id: minimax_group_id,
-        soundAPI_api_key: siliconflow_apikey, // siliconflow_apikey, // minimax_apikey
+        // soundAPI_group_id: minimax_group_id,
+        // soundAPI_api_key: minimax_apikey,
+        siliconFlow_api_key: siliconflow_apikey,
     }) : await sendSingleMessageByEmail({
         messageType: 'text',
         messageContent: JSON.stringify({ text: messageText }),
@@ -60,7 +61,7 @@ export const requestSingleMessage = async (c: Context) => {
 
 export const requestGroupMessage = async (c: Context) => {
     const envConfig = c.env || {}
-    const { rainy_night_appId, rainy_night_appSecret, minimax_group_id, minimax_apikey } = envConfig || {}
+    const { rainy_night_appId, rainy_night_appSecret, minimax_group_id, minimax_apikey, siliconflow_apikey } = envConfig || {}
     const accessToken = await getAccessToken({ app_id: rainy_night_appId, app_secret: rainy_night_appSecret })
     if (!accessToken) {
         return c.json({
@@ -92,8 +93,9 @@ export const requestGroupMessage = async (c: Context) => {
         group_id,
         messageText,
         accessToken,
-        soundAPI_group_id: minimax_group_id,
-        soundAPI_api_key: minimax_apikey,
+        // soundAPI_group_id: minimax_group_id,
+        // soundAPI_api_key: minimax_apikey,
+        siliconFlow_api_key: siliconflow_apikey,
     }) : await sendGroupMessage({
         group_id,
         messageType: 'text',

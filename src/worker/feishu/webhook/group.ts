@@ -1,6 +1,7 @@
 import { getAccessToken, createUUID, isAtMessage } from './access'
 import { updateAudio } from './audioHelper'
 import { getSoundMessage } from '../../minimax/index'
+import { getSoundMessage as getSoundMessageBySiliconFlow } from '../../siliconflow/chat'
 export const sendGroupMessage = async ({
     group_id,
     messageContent,
@@ -50,18 +51,20 @@ export const sendGroupMessageWithAudio = async ({
     accessToken,
     soundAPI_group_id,
     soundAPI_api_key,
+    siliconFlow_api_key,
 }: {
     group_id: string, 
     messageText: string, 
     accessToken: string,
-    soundAPI_group_id: string,
-    soundAPI_api_key: string,
+    soundAPI_group_id?: string,
+    soundAPI_api_key?: string,
+    siliconFlow_api_key?: string,
 }) => {
     console.log(`sendGroupMessageWithAudio messageText---->`, messageText)
     console.log(`sendGroupMessageWithAudio soundAPI_group_id---->`, soundAPI_group_id)
     const uuid = createUUID()
     try {
-        if(soundAPI_group_id && soundAPI_api_key){
+        if((soundAPI_group_id && soundAPI_api_key) || siliconFlow_api_key){
             const [result, audioResult] = await Promise.all([
                 (async ()=>{
                     await sendGroupMessage({
@@ -75,15 +78,23 @@ export const sendGroupMessageWithAudio = async ({
                 })(),
                 (async ()=>{
                     console.log(`start getSoundMessage ---->`)
-                    const soundMessage = await getSoundMessage({ text: messageText, group_id: soundAPI_group_id, api_key: soundAPI_api_key })
-                    if(soundMessage?.audioHex){
+                    // const soundMessage = await getSoundMessage({ text: messageText, group_id: soundAPI_group_id, api_key: soundAPI_api_key })
+                    const soundMessage: Record<string, any> | null = soundAPI_group_id && soundAPI_api_key ?  await getSoundMessage({ text: messageText, group_id: soundAPI_group_id, api_key: soundAPI_api_key }) : (siliconFlow_api_key ? await getSoundMessageBySiliconFlow({ text: messageText, token: siliconFlow_api_key }) : null)
+                    
+                    if(soundMessage?.success){
                         console.log(`soundMessage---->`, `success`)
-                        const updateAudioResult = await updateAudio({
+                        const updateAudioResult = soundMessage?.audioHex ? await updateAudio({
                             accessToken,
                             audioHexData: soundMessage.audioHex,
                             audioName: `water_reminder_${uuid}.wav`,
                             audioDuration: soundMessage.audioSeconds,
+                        }) : await updateAudio({
+                            accessToken,
+                            audioArrayBuffer: soundMessage.audioBuffer,
+                            audioName: `water_reminder_${uuid}.wav`,
+                            audioDuration: soundMessage.audioSeconds,
                         })
+
                         console.log(`updateAudioResult---->`, updateAudioResult)
                         if(updateAudioResult?.file_key){
                             

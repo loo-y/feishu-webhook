@@ -2,6 +2,7 @@ import { getAccessToken, createUUID, isAtMessage } from './access'
 import { updateAudio } from './audioHelper'
 import { getSoundMessage } from '../../minimax/index'
 import { getSoundMessage as getSoundMessageBySiliconFlow } from '../../siliconflow/chat'
+import { voices } from '../../siliconflow/constants'
 
 // 和 replyMessage的区别是主动发起消息，而不是回复消息
 // 单聊需要用户在应用的可用范围内，群聊需要用户在群内
@@ -44,12 +45,14 @@ export const sendSingleMessageByEmailWithAudio = async ({
     accessToken,
     soundAPI_group_id,
     soundAPI_api_key,
+    siliconFlow_api_key,
 }: {
     userEmail: string, 
     messageText: string, 
     accessToken: string,
-    soundAPI_group_id: string,
-    soundAPI_api_key: string,
+    soundAPI_group_id?: string,
+    soundAPI_api_key?: string,
+    siliconFlow_api_key?: string,
 }) => {
     if (!accessToken) {
         return {
@@ -59,7 +62,7 @@ export const sendSingleMessageByEmailWithAudio = async ({
     }
     const uuid = createUUID()
     try {
-        if(soundAPI_group_id && soundAPI_api_key){
+        if((soundAPI_group_id && soundAPI_api_key) || siliconFlow_api_key){
             const [result, audioResult] = await Promise.all([
                 (async ()=>{
                     await sendSingleMessageByEmail({
@@ -72,8 +75,7 @@ export const sendSingleMessageByEmailWithAudio = async ({
                 })(),
                 (async ()=>{
                     console.log(`start getSoundMessage ---->`)
-                    // const soundMessage: Record<string, any> = await getSoundMessage({ text: messageText, group_id: soundAPI_group_id, api_key: soundAPI_api_key })
-                    const soundMessage: { audioBuffer: ArrayBuffer, audioSeconds: number, success: boolean, audioHex?: string } | null = await getSoundMessageBySiliconFlow({ text: messageText, token: soundAPI_api_key })
+                    const soundMessage: Record<string, any> | null = soundAPI_group_id && soundAPI_api_key ?  await getSoundMessage({ text: messageText, group_id: soundAPI_group_id, api_key: soundAPI_api_key }) : (siliconFlow_api_key ? await getSoundMessageBySiliconFlow({ text: messageText, token: siliconFlow_api_key, voice: voices.wangyibo_voice_002 }) : null)
                     if(soundMessage?.success){
                         console.log(`soundMessage---->`, soundMessage)
                         const updateAudioResult = soundMessage?.audioHex ? await updateAudio({
