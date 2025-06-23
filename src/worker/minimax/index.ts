@@ -61,9 +61,12 @@ export const getSoundMessage = async ({ text, group_id, api_key }: { text: strin
             body: JSON.stringify(requestBody),
         })
         const responseData: AudioData = await response.json()
+        const audioHex = responseData?.data?.audio || ''
+        console.log(`responseData---->`, responseData)
         return {
-            audioHex: responseData?.data?.audio || '',
+            audioHex: audioHex,
             audioSeconds: responseData?.extra_info?.audio_length || 0,
+            success: !!audioHex,
         }
     } catch (error) {
         console.log(`getSoundMessage error--->`, error)

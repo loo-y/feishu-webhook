@@ -1,6 +1,7 @@
 import { getAccessToken, createUUID, isAtMessage } from './access'
 import { updateAudio } from './audioHelper'
 import { getSoundMessage } from '../../minimax/index'
+import { getSoundMessage as getSoundMessageBySiliconFlow } from '../../siliconflow/chat'
 
 // 和 replyMessage的区别是主动发起消息，而不是回复消息
 // 单聊需要用户在应用的可用范围内，群聊需要用户在群内
@@ -71,18 +72,23 @@ export const sendSingleMessageByEmailWithAudio = async ({
                 })(),
                 (async ()=>{
                     console.log(`start getSoundMessage ---->`)
-                    const soundMessage = await getSoundMessage({ text: messageText, group_id: soundAPI_group_id, api_key: soundAPI_api_key })
-                    if(soundMessage?.audioHex){
-                        console.log(`soundMessage---->`, `success`)
-                        const updateAudioResult = await updateAudio({
+                    // const soundMessage: Record<string, any> = await getSoundMessage({ text: messageText, group_id: soundAPI_group_id, api_key: soundAPI_api_key })
+                    const soundMessage: { audioBuffer: ArrayBuffer, audioSeconds: number, success: boolean, audioHex?: string } | null = await getSoundMessageBySiliconFlow({ text: messageText, token: soundAPI_api_key })
+                    if(soundMessage?.success){
+                        console.log(`soundMessage---->`, soundMessage)
+                        const updateAudioResult = soundMessage?.audioHex ? await updateAudio({
                             accessToken,
                             audioHexData: soundMessage.audioHex,
                             audioName: `water_reminder_${uuid}.wav`,
                             audioDuration: soundMessage.audioSeconds,
+                        }) : await updateAudio({
+                            accessToken,
+                            audioArrayBuffer: soundMessage.audioBuffer,
+                            audioName: `water_reminder_${uuid}.wav`,
+                            audioDuration: soundMessage.audioSeconds,
                         })
                         console.log(`updateAudioResult---->`, updateAudioResult)
-                        if(updateAudioResult?.file_key){
-                            
+                        if(updateAudioResult?.file_key){ 
                             const audioResult = await sendSingleMessageByEmail({
                                 userEmail,
                                 messageType: 'audio',

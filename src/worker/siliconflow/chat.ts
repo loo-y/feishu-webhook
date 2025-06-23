@@ -90,3 +90,63 @@ export const createImage = async ({
         return null
     }
 }
+
+
+const songyi_voice_004 = 'speech:songyivoice004:clwx0imsh004t12vfvu9wsc84:wxokarljymursdgzhlub';
+export const getSoundMessage = async ({
+    text,
+    token,
+    voice = songyi_voice_004, // 'FunAudioLLM/CosyVoice2-0.5B:claire',
+    model = 'FunAudioLLM/CosyVoice2-0.5B',
+    sample_rate = 48000,
+    stream = false,
+    speed = 1,
+    gain = 0,
+}: {
+    text: string    
+    token: string
+    voice?: string
+    model?: string
+    sample_rate?: number
+    stream?: boolean
+    speed?: number
+    gain?: number
+}) => {
+    const url = `https://api.siliconflow.cn/v1/audio/speech`;
+    const body = {
+        model: model,   
+        input: text,
+        voice: voice,
+        response_format: 'opus',
+        sample_rate: sample_rate,
+        stream: stream,
+        speed: speed,
+        gain: gain,
+    }
+    console.log(`silliconflow getSoundMessage body--->`, body)
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+        })
+        const audioBuffer = await response.arrayBuffer();
+        // 计算每秒的字节数
+        const bytesPerSecond = sample_rate * 1 * (8 / 8);
+        const audioBufferLength = audioBuffer.byteLength;
+        console.log(`audioBufferLength---->`, audioBufferLength)
+        const audioSeconds = Math.ceil(audioBufferLength / bytesPerSecond) * 1000; // TODO 这个值有问题
+
+        return {
+            audioBuffer,
+            audioSeconds,
+            success: true,
+        }
+    } catch (error) {
+        console.log('silliconflow getSoundMessage error--->', error)
+        return null
+    }
+}

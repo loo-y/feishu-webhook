@@ -1,11 +1,13 @@
 export const updateAudio = async ({
     accessToken,
     audioHexData,
+    audioArrayBuffer,
     audioName,
     audioDuration,
 }: {
     accessToken: string,
-    audioHexData: string,
+    audioHexData?: string,
+    audioArrayBuffer?: ArrayBuffer,
     audioName: string,
     audioDuration?: number,
 }) => {
@@ -17,45 +19,55 @@ export const updateAudio = async ({
     }
 
     try{
-    const url = `https://open.feishu.cn/open-apis/im/v1/files`
-    const formData = new FormData()
-    formData.append('file_type', 'opus')
-    formData.append('file_name', audioName)
-    if(audioDuration){
-        formData.append('duration', audioDuration.toString())
-    }
-    // 将音频数据转换为二进制
-    // @ts-ignore
-    // const audioBuffer = Buffer.from(audioHexData, 'hex')
-    // formData.append('file', audioBuffer)
-
-    const audioBytes = hexToUint8Array(audioHexData);
-    const audioBlob = new Blob([audioBytes], { type: 'audio/wav' }); // 或 'audio/opus'，根据实际格式
-    formData.append('file', audioBlob, audioName);
-
-
-    const uploadResponse = await fetch(url, {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-            // 不要手动设置 Content-Type
-        },
-        body: formData,
-    })
-    const uploadData: Record<string, any> = await uploadResponse.json()
-    console.log(`updateAudioResult---->`, uploadData)
-    if (uploadData?.data?.file_key) {
-        return {
-            code: 200,
-            message: 'success',
-            file_key: uploadData.data?.file_key,
+        const url = `https://open.feishu.cn/open-apis/im/v1/files`
+        const formData = new FormData()
+        formData.append('file_type', 'opus')
+        formData.append('file_name', audioName)
+        if(audioDuration){
+            formData.append('duration', audioDuration.toString())
         }
-    } else {
-        return {
-            code: 500,
-            message: 'Internal Server Error',
+        // 将音频数据转换为二进制
+        // @ts-ignore
+        // const audioBuffer = Buffer.from(audioHexData, 'hex')
+        // formData.append('file', audioBuffer)
+
+        let audioBlob: Blob | null = null
+        if(audioHexData){
+            const audioBytes = hexToUint8Array(audioHexData);
+            audioBlob = new Blob([audioBytes], { type: 'audio/wav' }); // 或 'audio/opus'，根据实际格式
+        } else if(audioArrayBuffer){
+            // @ts-ignore
+            audioBlob = new Blob([Buffer.from(audioArrayBuffer)], { type: 'audio/opus' }); // 或 'audio/opus'，根据实际格式
         }
-    }
+        
+        if(audioBlob){  
+            formData.append('file', audioBlob, audioName);
+        }
+
+        console.log(`audioformData---->`, formData)
+
+        const uploadResponse = await fetch(url, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                // 不要手动设置 Content-Type
+            },
+            body: formData,
+        })
+        const uploadData: Record<string, any> = await uploadResponse.json()
+        console.log(`updateAudioResult---->`, uploadData)
+        if (uploadData?.data?.file_key) {
+            return {
+                code: 200,
+                message: 'success',
+                file_key: uploadData.data?.file_key,
+            }
+        } else {
+            return {
+                code: 500,
+                message: 'Internal Server Error',
+            }
+        }
     } catch (error) {
         console.log(`updateAudio error--->`, String(error))
         return {

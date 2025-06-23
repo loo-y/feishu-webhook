@@ -15,7 +15,7 @@ export interface Env {
 
 export const requestSingleMessage = async (c: Context) => {
     const envConfig = c.env || {}
-    const { rainy_night_appId, rainy_night_appSecret, minimax_group_id, minimax_apikey } = envConfig || {}
+    const { rainy_night_appId, rainy_night_appSecret, minimax_group_id, minimax_apikey, siliconflow_apikey } = envConfig || {}
     const accessToken = await getAccessToken({ app_id: rainy_night_appId, app_secret: rainy_night_appSecret })
     if (!accessToken) {
         return c.json({
@@ -48,7 +48,7 @@ export const requestSingleMessage = async (c: Context) => {
         userEmail: email,
         accessToken,
         soundAPI_group_id: minimax_group_id,
-        soundAPI_api_key: minimax_apikey,
+        soundAPI_api_key: siliconflow_apikey, // siliconflow_apikey, // minimax_apikey
     }) : await sendSingleMessageByEmail({
         messageType: 'text',
         messageContent: JSON.stringify({ text: messageText }),
