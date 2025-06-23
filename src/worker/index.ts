@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
-import normal from './feishu/webhook/normal'
-import { requestGroupMessage, requestSingleMessage, hydrationReminder } from './feishu/webhook/normal'
-import { Env } from './feishu/webhook/normal'
+import feishuWebhook, { requestGroupMessage, requestSingleMessage, hydrationReminder } from './feishu/webhook'
+import { Env } from './feishu/webhook'
+
 // import eventDispatcher from './feishu/webhook/event'
 const app = new Hono<{ Bindings: Env }>()
 // import * as lark from '@larksuiteoapi/node-sdk';
@@ -9,7 +9,7 @@ const app = new Hono<{ Bindings: Env }>()
 app.get('/api/', c => c.json({ name: 'Cloudflare' }))
 // import * as lark from '@larksuiteoapi/node-sdk';
 
-app.post('/feishu/webhook/event', normal)
+app.post('/feishu/webhook/event', feishuWebhook)
 // 同时支持post 和  get
 app.all('/feishu/group_message', requestGroupMessage)
 app.all('feishu/single_message', requestSingleMessage)
