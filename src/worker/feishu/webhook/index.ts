@@ -1,7 +1,7 @@
 import { Context } from 'hono'
 import { getAccessToken, createUUID, isAtMessage } from './access'
 import { getChatMessage } from '../../siliconflow/chat'
-import { replyTextMessage, replyImageMessage, replyAudioMessage } from './reply'
+import { replyMessage, replyTextMessage, replyImageMessage, replyAudioMessage } from './reply'
 import { sendGroupMessage, sendGroupMessageWithAudio } from './group'
 import { sendSingleMessageByEmail, sendSingleMessageByEmailWithAudio } from './single'
 
@@ -188,7 +188,9 @@ const handleAtMeMessage = async (
             if(command?.command){
                 switch(command.command){
                     case 'help':
-                        await replyTextMessage(command.text, message_id, envConfig)
+                        // await replyTextMessage(command.text, message_id, envConfig)
+                        const accessToken = await getAccessToken({ app_id: envConfig.rainy_night_appId, app_secret: envConfig.rainy_night_appSecret })
+                        await replyMessage('text', JSON.stringify({ text:  showHelpMessage() }), message_id, accessToken)
                         break;
                     case 'image':
                         await replyImageMessage(command.text.replace('createImage:', ''), message_id, envConfig)
@@ -218,7 +220,7 @@ const handleAtMeMessage = async (
 }
 
 // 根据小时返回不同的提醒文案
-function getHydrationMessageByHour(hour: number): string {
+const getHydrationMessageByHour = (hour: number): string => {
     switch (hour) {
         case 2:
             return '早安！新的一天开始了，记得喝水哦~'
@@ -238,7 +240,7 @@ function getHydrationMessageByHour(hour: number): string {
 }
 
 // 用于辨别发送给机器人中的文本是否包含特定的命令，比如 /help， /image，/speak，并且需要返回命令的类型 ，同时返回命令之外的其他文本信息，如果包含多个命令，则返回第一个命令。文本信息需要trim，并且保证存在
-function isCommand(text: string): { command: string, subCommand: string, text: string } | null {
+const isCommand = (text: string): { command: string, subCommand: string, text: string } | null => {
     // 获取以 / 开头的命令，到空格结束，剩下的为命令对应的文本信息
     const command = text.match(/^\/([^\s]+)/)
     if(command && command[0]){
@@ -258,3 +260,23 @@ function isCommand(text: string): { command: string, subCommand: string, text: s
     }
     return null
 }
+
+// 当用户输入 /help 时 返回可用的命令
+const showHelpMessage = () => {
+    return `
+    可用的命令：
+    /image 创建图片
+    /speak 说话
+        /speak:wangyibo 使用王一博的声音说话
+        /speak:songyi 使用宋轶的声音说话
+        /speak:alex 使用alex的声音说话
+        /speak:anna 使用anna的声音说话
+        /speak:charles 使用charles的声音说话
+        /speak:bella 使用bella的声音说话
+        /speak:benjamin 使用benjamin的声音说话
+        /speak:claire 使用claire的声音说话
+        /speak:david 使用david的声音说话
+        /speak:diana 使用diana的声音说话
+    `
+}   
+

@@ -5,7 +5,7 @@ import { updateAudio } from './audioHelper'
 import { sendGroupMessage } from './group'
 
 
-const replyMessage = async (messageType: string, messageContent: string, message_id: string, accessToken: string) => {
+export const replyMessage = async (messageType: string, messageContent: string, message_id: string, accessToken: string) => {
     const url = `https://open.feishu.cn/open-apis/im/v1/messages/${message_id}/reply`
     try {
         const response = await fetch(url, {
