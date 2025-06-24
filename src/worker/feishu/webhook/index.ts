@@ -180,7 +180,10 @@ const handleAtMeMessage = async (
         try {
             const contentJson = JSON.parse(content)
             const { text } = contentJson
-            const command = isCommand(text)
+            // 这里需要先移除 @ 机器人 的文本 以 @ 开头，以 空格结尾
+            const textWithoutAt = text.replace(/@[^ ]* /, '').trim()
+
+            const command = isCommand(textWithoutAt)
             console.log(`command---->`, JSON.stringify(command))
             if(command?.command){
                 switch(command.command){
@@ -199,10 +202,10 @@ const handleAtMeMessage = async (
                         })
                         break;
                     default:
-                        await replyTextMessage(text, message_id, envConfig)
+                        await replyTextMessage(textWithoutAt, message_id, envConfig)
                 }
             } else {
-                await replyTextMessage(text, message_id, envConfig)
+                await replyTextMessage(textWithoutAt, message_id, envConfig)
             }
         } catch (error) {
             console.error(error)
