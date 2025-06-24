@@ -95,7 +95,7 @@ export const createImage = async ({
 export const getSoundMessage = async ({
     text,
     token,
-    voice = voices.songyi_voice_004, // 'FunAudioLLM/CosyVoice2-0.5B:claire',
+    voiceId = "songyi", // 'FunAudioLLM/CosyVoice2-0.5B:claire',
     model = 'FunAudioLLM/CosyVoice2-0.5B',
     sample_rate = 48000,
     stream = false,
@@ -104,7 +104,7 @@ export const getSoundMessage = async ({
 }: {
     text: string    
     token: string
-    voice?: string
+    voiceId?: string
     model?: string
     sample_rate?: number
     stream?: boolean
@@ -112,6 +112,8 @@ export const getSoundMessage = async ({
     gain?: number
 }) => {
     const url = `https://api.siliconflow.cn/v1/audio/speech`;
+    // @ts-ignore
+    const voice = voices[voiceId] || voices.songyi
     const body = {
         model: model,   
         input: text,

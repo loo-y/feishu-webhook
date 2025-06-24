@@ -1,7 +1,7 @@
 import { Context } from 'hono'
 import { getAccessToken, createUUID, isAtMessage } from './access'
 import { getChatMessage } from '../../siliconflow/chat'
-import { replyTextMessage, replyImageMessage } from './reply'
+import { replyTextMessage, replyImageMessage, replyAudioMessage } from './reply'
 import { sendGroupMessage, sendGroupMessageWithAudio } from './group'
 import { sendSingleMessageByEmail, sendSingleMessageByEmailWithAudio } from './single'
 
@@ -132,8 +132,9 @@ export const hydrationReminder = async (env: Env) => {
         group_id,
         messageText: waterMessage,
         accessToken,
-        soundAPI_group_id: minimax_group_id,
-        soundAPI_api_key: minimax_apikey,
+        // soundAPI_group_id: minimax_group_id,
+        // soundAPI_api_key: minimax_apikey,
+        siliconFlow_api_key: siliconflow_apikey,
     })
     console.log(`result---->`, JSON.stringify(result))
     return result
@@ -179,9 +180,27 @@ const handleAtMeMessage = async (
         try {
             const contentJson = JSON.parse(content)
             const { text } = contentJson
-            // 如果text中包含 "createImage"，则发送图片消息
-            if (text.includes('createImage:')) {
-                await replyImageMessage(text.replace('createImage:', ''), message_id, envConfig)
+            const command = isCommand(text)
+            console.log(`command---->`, JSON.stringify(command))
+            if(command?.command){
+                switch(command.command){
+                    case 'help':
+                        await replyTextMessage(command.text, message_id, envConfig)
+                        break;
+                    case 'image':
+                        await replyImageMessage(command.text.replace('createImage:', ''), message_id, envConfig)
+                        break;
+                    case 'speak':
+                        await replyAudioMessage({
+                            messageText: command.text,
+                            voiceId: command.subCommand,
+                            message_id,
+                            envConfig,
+                        })
+                        break;
+                    default:
+                        await replyTextMessage(text, message_id, envConfig)
+                }
             } else {
                 await replyTextMessage(text, message_id, envConfig)
             }
@@ -213,4 +232,26 @@ function getHydrationMessageByHour(hour: number): string {
         default:
             return '该喝水了'
     }
+}
+
+// 用于辨别发送给机器人中的文本是否包含特定的命令，比如 /help， /image，/speak，并且需要返回命令的类型 ，同时返回命令之外的其他文本信息，如果包含多个命令，则返回第一个命令。文本信息需要trim，并且保证存在
+function isCommand(text: string): { command: string, subCommand: string, text: string } | null {
+    // 获取以 / 开头的命令，到空格结束，剩下的为命令对应的文本信息
+    const command = text.match(/^\/([^\s]+)/)
+    if(command && command[0]){
+        const commandText = command[0]
+        const otherText = text.replace(commandText, '').trim()
+        // 移除 /
+        const commandTextTrim = commandText.replace('/', '').trim()
+        // 拆解command，如果有冒号，则返回冒号前的命令，冒号后的为子命令内容
+        const commandArray = commandTextTrim.split(':')
+        if(commandArray.length > 1){
+            const mainCommand = commandArray[0]
+            const subCommand = commandArray[1]
+            return { command: mainCommand, subCommand: subCommand, text: otherText }
+        } else {
+            return { command: commandTextTrim, subCommand: '', text: otherText }
+        }
+    }
+    return null
 }

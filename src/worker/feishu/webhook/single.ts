@@ -75,7 +75,7 @@ export const sendSingleMessageByEmailWithAudio = async ({
                 })(),
                 (async ()=>{
                     console.log(`start getSoundMessage ---->`)
-                    const soundMessage: Record<string, any> | null = soundAPI_group_id && soundAPI_api_key ?  await getSoundMessage({ text: messageText, group_id: soundAPI_group_id, api_key: soundAPI_api_key }) : (siliconFlow_api_key ? await getSoundMessageBySiliconFlow({ text: messageText, token: siliconFlow_api_key, voice: voices.wangyibo_voice_002 }) : null)
+                    const soundMessage: Record<string, any> | null = soundAPI_group_id && soundAPI_api_key ?  await getSoundMessage({ text: messageText, group_id: soundAPI_group_id, api_key: soundAPI_api_key }) : (siliconFlow_api_key ? await getSoundMessageBySiliconFlow({ text: messageText, token: siliconFlow_api_key, voiceId: "wangyibo" }) : null)
                     if(soundMessage?.success){
                         console.log(`soundMessage---->`, soundMessage)
                         const updateAudioResult = soundMessage?.audioHex ? await updateAudio({
@@ -87,7 +87,7 @@ export const sendSingleMessageByEmailWithAudio = async ({
                             accessToken,
                             audioArrayBuffer: soundMessage.audioBuffer,
                             audioName: `water_reminder_${uuid}.wav`,
-                            audioDuration: soundMessage.audioSeconds,
+                            // audioDuration: soundMessage.audioSeconds,
                         })
                         console.log(`updateAudioResult---->`, updateAudioResult)
                         if(updateAudioResult?.file_key){ 

@@ -80,7 +80,7 @@ export const sendGroupMessageWithAudio = async ({
                     console.log(`start getSoundMessage ---->`)
                     // const soundMessage = await getSoundMessage({ text: messageText, group_id: soundAPI_group_id, api_key: soundAPI_api_key })
                     const soundMessage: Record<string, any> | null = soundAPI_group_id && soundAPI_api_key ?  await getSoundMessage({ text: messageText, group_id: soundAPI_group_id, api_key: soundAPI_api_key }) : (siliconFlow_api_key ? await getSoundMessageBySiliconFlow({ text: messageText, token: siliconFlow_api_key }) : null)
-                    
+
                     if(soundMessage?.success){
                         console.log(`soundMessage---->`, `success`)
                         const updateAudioResult = soundMessage?.audioHex ? await updateAudio({
@@ -92,7 +92,7 @@ export const sendGroupMessageWithAudio = async ({
                             accessToken,
                             audioArrayBuffer: soundMessage.audioBuffer,
                             audioName: `water_reminder_${uuid}.wav`,
-                            audioDuration: soundMessage.audioSeconds,
+                            // audioDuration: soundMessage.audioSeconds,
                         })
 
                         console.log(`updateAudioResult---->`, updateAudioResult)

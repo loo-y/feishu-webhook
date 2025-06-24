@@ -1,6 +1,8 @@
 import { getAccessToken, createUUID, isAtMessage } from './access'
 import { uploadImage } from './imageHelper'
-import { getChatMessage, createImage } from '../../siliconflow/chat'
+import { getChatMessage, createImage, getSoundMessage as getSoundMessageBySiliconFlow } from '../../siliconflow/chat'
+import { updateAudio } from './audioHelper'
+import { sendGroupMessage } from './group'
 
 
 const replyMessage = async (messageType: string, messageContent: string, message_id: string, accessToken: string) => {
@@ -102,5 +104,61 @@ export const replyImageMessage = async (
     return {
         code: 200,
         message: 'success',
+    }
+}
+
+export const replyAudioMessage = async ({
+    messageText,
+    voiceId,
+    message_id,
+    envConfig,
+}: {
+    messageText: string,
+    voiceId: string,
+    message_id: string,
+    envConfig: Record<string, string>
+}): Promise<Record<string, any>> => {
+    const { rainy_night_appId, rainy_night_appSecret, siliconflow_apikey } = envConfig || {}
+    const accessToken = await getAccessToken({ app_id: rainy_night_appId, app_secret: rainy_night_appSecret })
+    if (!accessToken) {
+        return {
+            code: 500,
+            message: 'Internal Server Error',
+        }
+    }
+
+    const soundMessage: Record<string, any> | null = (siliconflow_apikey ? await getSoundMessageBySiliconFlow({ text: messageText, token: siliconflow_apikey, voiceId: voiceId }) : null)
+
+    if(soundMessage?.success){
+        const uuid = createUUID()
+        console.log(`soundMessage---->`, `success`)
+        const updateAudioResult = soundMessage?.audioHex ? await updateAudio({
+            accessToken,
+            audioHexData: soundMessage.audioHex,
+            audioName: `water_reminder_${uuid}.wav`,
+            audioDuration: soundMessage.audioSeconds,
+        }) : await updateAudio({
+            accessToken,
+            audioArrayBuffer: soundMessage.audioBuffer,
+            audioName: `water_reminder_${uuid}.wav`,
+            // audioDuration: soundMessage.audioSeconds,
+        })
+
+        console.log(`updateAudioResult---->`, updateAudioResult)
+        if(updateAudioResult?.file_key){
+            
+            const audioResult = await replyMessage(
+                'audio',
+                JSON.stringify({ file_key: updateAudioResult.file_key }),
+                message_id,
+                accessToken
+            )
+            return audioResult
+        }
+    }
+
+    return {
+        audioCode: -1,
+        audioMessage: 'Internal Server Error',
     }
 }
