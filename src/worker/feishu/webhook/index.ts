@@ -4,6 +4,7 @@ import { getChatMessage } from '../../siliconflow/chat'
 import { replyMessage, replyTextMessage, replyImageMessage, replyAudioMessage } from './reply'
 import { sendGroupMessage, sendGroupMessageWithAudio } from './group'
 import { sendSingleMessageByEmail, sendSingleMessageByEmailWithAudio } from './single'
+import { voices } from '../../siliconflow/constants'
 
 export interface Env {
     rainy_night_appId: string
@@ -23,19 +24,21 @@ export const requestSingleMessage = async (c: Context) => {
             message: 'Internal Server Error',
         })
     }
-    let messageText, email, attachAudio = false, voiceId = '';
+    let messageText, email, attachAudio = false, voiceId = '', speed = 1;
     if (c.req.method === 'GET') {
         const queryParams = c.req.query()
         messageText = queryParams?.message_text
         email = queryParams?.email
         attachAudio = queryParams?.attach_audio == "1"
-        voiceId = queryParams?.voiceid
+        voiceId = queryParams?.voiceid;
+        speed = queryParams?.speed ? Number(queryParams?.speed) : 1;
     } else if (c.req.method === 'POST') {
         const body = await c.req.json()
         messageText = body?.messageText
         email = body?.email
         attachAudio = body?.attachAudio == true
         voiceId = body?.voiceId
+        speed = body?.speed ? Number(body?.speed) : 1;
     }
 
     if(!messageText || !email){
@@ -53,6 +56,7 @@ export const requestSingleMessage = async (c: Context) => {
         // soundAPI_api_key: minimax_apikey,
         siliconFlow_api_key: siliconflow_apikey,
         voiceId,
+        speed,
     }) : await sendSingleMessageByEmail({
         messageType: 'text',
         messageContent: JSON.stringify({ text: messageText }),
@@ -266,20 +270,15 @@ const isCommand = (text: string): { command: string, subCommand: string, text: s
 
 // 当用户输入 /help 时 返回可用的命令
 const showHelpMessage = () => {
+    const voiceList = Object.keys(voices).map(key => key).join(', ')
     return `
     可用的命令：
     /image 创建图片
     /speak 说话
+        示例：
         /speak:wangyibo 使用王一博的声音说话
-        /speak:songyi 使用宋轶的声音说话
-        /speak:alex 使用alex的声音说话
-        /speak:anna 使用anna的声音说话
-        /speak:charles 使用charles的声音说话
-        /speak:bella 使用bella的声音说话
-        /speak:benjamin 使用benjamin的声音说话
-        /speak:claire 使用claire的声音说话
-        /speak:david 使用david的声音说话
-        /speak:diana 使用diana的声音说话
+        可用的声音列表：
+        ${voiceList}
     `
 }   
 

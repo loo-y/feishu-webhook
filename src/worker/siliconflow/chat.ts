@@ -121,7 +121,7 @@ export const getSoundMessage = async ({
         response_format: 'opus',
         sample_rate: sample_rate,
         stream: stream,
-        speed: speed,
+        speed: (speed >= 0.25 && speed <= 4) ? speed : 1,
         gain: gain,
     }
     console.log(`silliconflow getSoundMessage body--->`, body)
