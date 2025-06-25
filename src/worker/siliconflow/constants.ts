@@ -1,6 +1,7 @@
 export const voices = {
     songyi: 'speech:songyivoice004:clwx0imsh004t12vfvu9wsc84:wxokarljymursdgzhlub',
     wangyibo: 'speech:wangyibovoice002:clwx0imsh004t12vfvu9wsc84:pnzsgescndemxskgaxfi',
+    anna_su_001: 'speech:anna_su_001:clwx0imsh004t12vfvu9wsc84:ammdxsckzuwrukcieoov',
     alex: 'FunAudioLLM/CosyVoice2-0.5B:alex',
     anna: 'FunAudioLLM/CosyVoice2-0.5B:anna',
     charles: 'FunAudioLLM/CosyVoice2-0.5B:charles',

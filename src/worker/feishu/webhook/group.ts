@@ -79,7 +79,7 @@ export const sendGroupMessageWithAudio = async ({
                 (async ()=>{
                     console.log(`start getSoundMessage ---->`)
                     // const soundMessage = await getSoundMessage({ text: messageText, group_id: soundAPI_group_id, api_key: soundAPI_api_key })
-                    const soundMessage: Record<string, any> | null = soundAPI_group_id && soundAPI_api_key ?  await getSoundMessage({ text: messageText, group_id: soundAPI_group_id, api_key: soundAPI_api_key }) : (siliconFlow_api_key ? await getSoundMessageBySiliconFlow({ text: messageText, token: siliconFlow_api_key }) : null)
+                    const soundMessage: Record<string, any> | null = soundAPI_group_id && soundAPI_api_key ?  await getSoundMessage({ text: messageText, group_id: soundAPI_group_id, api_key: soundAPI_api_key }) : (siliconFlow_api_key ? await getSoundMessageBySiliconFlow({ text: messageText, token: siliconFlow_api_key, voiceId: "anna_su_001" }) : null)
 
                     if(soundMessage?.success){
                         console.log(`soundMessage---->`, `success`)

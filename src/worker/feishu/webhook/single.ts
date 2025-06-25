@@ -46,6 +46,7 @@ export const sendSingleMessageByEmailWithAudio = async ({
     soundAPI_group_id,
     soundAPI_api_key,
     siliconFlow_api_key,
+    voiceId,
 }: {
     userEmail: string, 
     messageText: string, 
@@ -53,6 +54,7 @@ export const sendSingleMessageByEmailWithAudio = async ({
     soundAPI_group_id?: string,
     soundAPI_api_key?: string,
     siliconFlow_api_key?: string,
+    voiceId?: string,
 }) => {
     if (!accessToken) {
         return {
@@ -75,7 +77,7 @@ export const sendSingleMessageByEmailWithAudio = async ({
                 })(),
                 (async ()=>{
                     console.log(`start getSoundMessage ---->`)
-                    const soundMessage: Record<string, any> | null = soundAPI_group_id && soundAPI_api_key ?  await getSoundMessage({ text: messageText, group_id: soundAPI_group_id, api_key: soundAPI_api_key }) : (siliconFlow_api_key ? await getSoundMessageBySiliconFlow({ text: messageText, token: siliconFlow_api_key, voiceId: "wangyibo" }) : null)
+                    const soundMessage: Record<string, any> | null = soundAPI_group_id && soundAPI_api_key ?  await getSoundMessage({ text: messageText, group_id: soundAPI_group_id, api_key: soundAPI_api_key }) : (siliconFlow_api_key ? await getSoundMessageBySiliconFlow({ text: messageText, token: siliconFlow_api_key, voiceId: voiceId || "wangyibo" }) : null)
                     if(soundMessage?.success){
                         console.log(`soundMessage---->`, soundMessage)
                         const updateAudioResult = soundMessage?.audioHex ? await updateAudio({

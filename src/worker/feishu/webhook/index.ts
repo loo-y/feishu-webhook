@@ -23,17 +23,19 @@ export const requestSingleMessage = async (c: Context) => {
             message: 'Internal Server Error',
         })
     }
-    let messageText, email, attachAudio = false;
+    let messageText, email, attachAudio = false, voiceId = '';
     if (c.req.method === 'GET') {
         const queryParams = c.req.query()
         messageText = queryParams?.message_text
         email = queryParams?.email
         attachAudio = queryParams?.attach_audio == "1"
+        voiceId = queryParams?.voiceid
     } else if (c.req.method === 'POST') {
         const body = await c.req.json()
         messageText = body?.messageText
         email = body?.email
         attachAudio = body?.attachAudio == true
+        voiceId = body?.voiceId
     }
 
     if(!messageText || !email){
@@ -50,6 +52,7 @@ export const requestSingleMessage = async (c: Context) => {
         // soundAPI_group_id: minimax_group_id,
         // soundAPI_api_key: minimax_apikey,
         siliconFlow_api_key: siliconflow_apikey,
+        voiceId,
     }) : await sendSingleMessageByEmail({
         messageType: 'text',
         messageContent: JSON.stringify({ text: messageText }),
