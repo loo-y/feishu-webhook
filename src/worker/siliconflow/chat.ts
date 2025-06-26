@@ -95,7 +95,7 @@ export const createImage = async ({
 export const getSoundMessage = async ({
     text,
     token,
-    voiceId = "songyi", // 'FunAudioLLM/CosyVoice2-0.5B:claire',
+    voiceId = "susu", // 'FunAudioLLM/CosyVoice2-0.5B:claire',
     model = 'FunAudioLLM/CosyVoice2-0.5B',
     sample_rate = 48000,
     stream = false,

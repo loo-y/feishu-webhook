@@ -1,9 +1,9 @@
 export const voices = {
     songyi: 'speech:songyivoice004:clwx0imsh004t12vfvu9wsc84:wxokarljymursdgzhlub',
     wangyibo: 'speech:wangyibovoice002:clwx0imsh004t12vfvu9wsc84:pnzsgescndemxskgaxfi',
-    anna_su_001: 'speech:anna_su_001:clwx0imsh004t12vfvu9wsc84:ammdxsckzuwrukcieoov',
-    anna_su_002: 'speech:anna_su_002:clwx0imsh004t12vfvu9wsc84:qkghtznzcxwvxmttyyyw',
-    anna_su_003: 'speech:anna_su_003:clwx0imsh004t12vfvu9wsc84:jmqrsillxbrldjrbbqug',
+    susu: 'speech:anna_su_001:clwx0imsh004t12vfvu9wsc84:ammdxsckzuwrukcieoov',
+    susu02: 'speech:anna_su_002:clwx0imsh004t12vfvu9wsc84:qkghtznzcxwvxmttyyyw',
+    susu03: 'speech:anna_su_003:clwx0imsh004t12vfvu9wsc84:jmqrsillxbrldjrbbqug',
     alex: 'FunAudioLLM/CosyVoice2-0.5B:alex',
     anna: 'FunAudioLLM/CosyVoice2-0.5B:anna',
     charles: 'FunAudioLLM/CosyVoice2-0.5B:charles',
