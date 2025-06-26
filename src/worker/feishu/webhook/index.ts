@@ -6,6 +6,12 @@ import { sendGroupMessage, sendGroupMessageWithAudio } from './group'
 import { sendSingleMessageByEmail, sendSingleMessageByEmailWithAudio } from './single'
 import { voices } from '../../siliconflow/constants'
 
+const COMMANDS = {
+    HELP: 'help',
+    IMAGE: 'image',
+    SPEAK: 'speak'
+};
+
 export interface Env {
     rainy_night_appId: string
     rainy_night_appSecret: string
@@ -14,91 +20,71 @@ export interface Env {
     minimax_apikey: string
 }
 
-export const requestSingleMessage = async (c: Context) => {
-    const envConfig = c.env || {}
-    const { rainy_night_appId, rainy_night_appSecret, minimax_group_id, minimax_apikey, siliconflow_apikey } = envConfig || {}
-    const accessToken = await getAccessToken({ app_id: rainy_night_appId, app_secret: rainy_night_appSecret })
-    if (!accessToken) {
-        return c.json({
-            code: 500,
-            message: 'Internal Server Error',
-        })
-    }
-    let messageText, email, attachAudio = false, voiceId = '', speed = 1;
+async function extractParams(c: Context, fields: string[]): Promise<Record<string, any>> {
+    let params: Record<string, any> = {};
     if (c.req.method === 'GET') {
-        const queryParams = c.req.query()
-        messageText = queryParams?.message_text
-        email = queryParams?.email
-        attachAudio = queryParams?.attach_audio == "1"
-        voiceId = queryParams?.voiceid;
-        speed = queryParams?.speed ? Number(queryParams?.speed) : 1;
+        const queryParams = c.req.query();
+        fields.forEach(field => params[field] = queryParams[field]);
     } else if (c.req.method === 'POST') {
-        const body = await c.req.json()
-        messageText = body?.messageText
-        email = body?.email
-        attachAudio = body?.attachAudio == true
-        voiceId = body?.voiceId
-        speed = body?.speed ? Number(body?.speed) : 1;
+        const body = await c.req.json();
+        fields.forEach(field => params[field] = body[field]);
+    }
+    return params;
+}
+
+export const requestSingleMessage = async (c: Context) => {
+    const envConfig = c.env || {};
+    const { rainy_night_appId, rainy_night_appSecret, siliconflow_apikey } = envConfig || {};
+    const accessToken = await getAccessToken({ app_id: rainy_night_appId, app_secret: rainy_night_appSecret });
+    if (!accessToken) {
+        return c.json({ code: 500, message: 'Internal Server Error' });
     }
 
-    if(!messageText || !email){
-        return c.json({
-            code: 500,
-            message: 'Internal Server Error',
-        })
+    const { message_text, email, attach_audio, voiceid, speed } = await extractParams(c, ['message_text', 'email', 'attach_audio', 'voiceid', 'speed']);
+    const attachAudio = attach_audio === '1' || attach_audio === true;
+    const voiceId = voiceid;
+    const speedNum = speed ? Number(speed) : 1;
+
+    if (!message_text || !email) {
+        return c.json({ code: 500, message: 'Internal Server Error' });
     }
 
     const result = attachAudio ? await sendSingleMessageByEmailWithAudio({
-        messageText: messageText,
+        messageText: message_text,
         userEmail: email,
         accessToken,
         // soundAPI_group_id: minimax_group_id,
         // soundAPI_api_key: minimax_apikey,
         siliconFlow_api_key: siliconflow_apikey,
         voiceId,
-        speed,
+        speed: speedNum,
     }) : await sendSingleMessageByEmail({
         messageType: 'text',
-        messageContent: JSON.stringify({ text: messageText }),
+        messageContent: JSON.stringify({ text: message_text }),
         userEmail: email,
         accessToken,
-    })
-    return c.json(result)
+    });
+    return c.json(result);
 }
 
 export const requestGroupMessage = async (c: Context) => {
-    const envConfig = c.env || {}
-    const { rainy_night_appId, rainy_night_appSecret, minimax_group_id, minimax_apikey, siliconflow_apikey } = envConfig || {}
-    const accessToken = await getAccessToken({ app_id: rainy_night_appId, app_secret: rainy_night_appSecret })
+    const envConfig = c.env || {};
+    const { rainy_night_appId, rainy_night_appSecret, siliconflow_apikey } = envConfig || {};
+    const accessToken = await getAccessToken({ app_id: rainy_night_appId, app_secret: rainy_night_appSecret });
     if (!accessToken) {
-        return c.json({
-            code: 500,
-            message: 'Internal Server Error',
-        })
-    }
-    let messageText, group_id, attachAudio = false;
-    if (c.req.method === 'GET') {
-        const queryParams = c.req.query()
-        messageText = queryParams?.message_text
-        group_id = queryParams?.group_id
-        attachAudio = queryParams?.attach_audio == "1"
-    } else if (c.req.method === 'POST') {
-        const body = await c.req.json()
-        messageText = body?.messageText
-        group_id = body?.groupId
-        attachAudio = body?.attachAudio == true
+        return c.json({ code: 500, message: 'Internal Server Error' });
     }
 
-    if (!messageText || !group_id) {
-        return c.json({
-            code: 500,
-            message: 'Internal Server Error',
-        })
+    const { message_text, group_id, attach_audio } = await extractParams(c, ['message_text', 'group_id', 'attach_audio']);
+    const attachAudio = attach_audio === '1' || attach_audio === true;
+
+    if (!message_text || !group_id) {
+        return c.json({ code: 500, message: 'Internal Server Error' });
     }
-    console.log(`messageText---->`, messageText)
+    console.log(`messageText---->`, message_text);
     const result: Record<string, any> = attachAudio ? await sendGroupMessageWithAudio({
         group_id,
-        messageText,
+        messageText: message_text,
         accessToken,
         // soundAPI_group_id: minimax_group_id,
         // soundAPI_api_key: minimax_apikey,
@@ -106,7 +92,7 @@ export const requestGroupMessage = async (c: Context) => {
     }) : await sendGroupMessage({
         group_id,
         messageType: 'text',
-        messageContent: JSON.stringify({ text: messageText }),
+        messageContent: JSON.stringify({ text: message_text }),
         accessToken,
     })
     return c.json(result)
@@ -194,15 +180,15 @@ const handleAtMeMessage = async (
             console.log(`command---->`, JSON.stringify(command))
             if(command?.command){
                 switch(command.command){
-                    case 'help':
+                    case COMMANDS.HELP:
                         // await replyTextMessage(command.text, message_id, envConfig)
                         const accessToken = await getAccessToken({ app_id: envConfig.rainy_night_appId, app_secret: envConfig.rainy_night_appSecret })
                         await replyMessage('text', JSON.stringify({ text:  showHelpMessage() }), message_id, accessToken)
                         break;
-                    case 'image':
+                    case COMMANDS.IMAGE:
                         await replyImageMessage(command.text.replace('createImage:', ''), message_id, envConfig)
                         break;
-                    case 'speak':
+                    case COMMANDS.SPEAK:
                         await replyAudioMessage({
                             messageText: command.text,
                             voiceId: command.subCommand,
@@ -248,24 +234,16 @@ const getHydrationMessageByHour = (hour: number): string => {
 
 // 用于辨别发送给机器人中的文本是否包含特定的命令，比如 /help， /image，/speak，并且需要返回命令的类型 ，同时返回命令之外的其他文本信息，如果包含多个命令，则返回第一个命令。文本信息需要trim，并且保证存在
 const isCommand = (text: string): { command: string, subCommand: string, text: string } | null => {
-    // 获取以 / 开头的命令，到空格结束，剩下的为命令对应的文本信息
-    const command = text.match(/^\/([^\s]+)/)
-    if(command && command[0]){
-        const commandText = command[0]
-        const otherText = text.replace(commandText, '').trim()
-        // 移除 /
-        const commandTextTrim = commandText.replace('/', '').trim()
-        // 拆解command，如果有冒号，则返回冒号前的命令，冒号后的为子命令内容
-        const commandArray = commandTextTrim.split(':')
-        if(commandArray.length > 1){
-            const mainCommand = commandArray[0]
-            const subCommand = commandArray[1]
-            return { command: mainCommand, subCommand: subCommand, text: otherText }
-        } else {
-            return { command: commandTextTrim, subCommand: '', text: otherText }
-        }
+    const match = text.match(/^\/([^\s]+)/);
+    if (!match) {
+        return null;
     }
-    return null
+
+    const fullCommand = match[1];
+    const otherText = text.replace(match[0], '').trim();
+    const [command, subCommand = ''] = fullCommand.split(':');
+
+    return { command, subCommand, text: otherText };
 }
 
 // 当用户输入 /help 时 返回可用的命令
@@ -273,10 +251,10 @@ const showHelpMessage = () => {
     const voiceList = Object.keys(voices).map(key => key).join(', ')
     return `
     可用的命令：
-    /image 创建图片
-    /speak 说话
+    /${COMMANDS.IMAGE} 创建图片
+    /${COMMANDS.SPEAK} 说话
         示例：
-        /speak:wangyibo 使用王一博的声音说话
+        /${COMMANDS.SPEAK}:wangyibo 使用王一博的声音说话
         可用的声音列表：
         ${voiceList}
     `

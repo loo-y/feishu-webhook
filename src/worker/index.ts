@@ -12,7 +12,7 @@ app.get('/api/', c => c.json({ name: 'Cloudflare' }))
 app.post('/feishu/webhook/event', feishuWebhook)
 // 同时支持post 和  get
 app.all('/feishu/group_message', requestGroupMessage)
-app.all('feishu/single_message', requestSingleMessage)
+app.all('/feishu/single_message', requestSingleMessage)
 // 增加一个中间件用来处理飞书 webhook/event
 // server.on('request', lark.adaptDefault('/webhook/event', eventDispatcher, {
 //     autoChallenge:true,
