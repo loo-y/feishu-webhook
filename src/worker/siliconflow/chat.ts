@@ -3,10 +3,16 @@ export const getChatMessage = async ({
     message,
     token,
     modelName,
+    temperature,
+    top_p,
+    top_k,
 }: {
     message: string
     token: string
     modelName: string
+    temperature?: number
+    top_p?: number
+    top_k?: number
 }) => {
     try {
         const response = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
@@ -25,9 +31,9 @@ export const getChatMessage = async ({
                 thinking_budget: 4096,
                 min_p: 0.05,
                 stop: null,
-                temperature: 0.7,
-                top_p: 0.7,
-                top_k: 50,
+                temperature: temperature || 0.7,
+                top_p: top_p || 0.7,
+                top_k: top_k || 50,
                 frequency_penalty: 0.5,
                 n: 1,
                 response_format: {
