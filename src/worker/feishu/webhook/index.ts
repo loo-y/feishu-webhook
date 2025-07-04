@@ -1,23 +1,28 @@
 import { Context } from 'hono'
 import { getAccessToken, createUUID, isAtMessage } from './access'
+import { getShortDomain } from './shortdomain'
 import { getChatMessage } from '../../siliconflow/chat'
 import { replyMessage, replyTextMessage, replyImageMessage, replyAudioMessage } from './reply'
 import { sendGroupMessage, sendGroupMessageWithAudio } from './group'
 import { sendSingleMessageByEmail, sendSingleMessageByEmailWithAudio } from './single'
 import { voices } from '../../siliconflow/constants'
+import { botApp } from '../util/constants'
 
 const COMMANDS = {
     HELP: 'help',
     IMAGE: 'image',
-    SPEAK: 'speak'
+    SPEAK: 'speak',
+    SHORTDOMAIN: 'shortdomain',
 };
 
 export interface Env {
-    rainy_night_appId: string
+    // rainy_night_appId: string
+    // rainy_night_open_id: string
     rainy_night_appSecret: string
     siliconflow_apikey: string
     minimax_group_id: string
     minimax_apikey: string
+    shoppingcart_helper_appSecret: string
 }
 
 async function extractParams(c: Context, fields: string[]): Promise<Record<string, any>> {
@@ -34,7 +39,8 @@ async function extractParams(c: Context, fields: string[]): Promise<Record<strin
 
 export const requestSingleMessage = async (c: Context) => {
     const envConfig = c.env || {};
-    const { rainy_night_appId, rainy_night_appSecret, siliconflow_apikey } = envConfig || {};
+    const { appId: rainy_night_appId, } = botApp.rainy_night
+    const { rainy_night_appSecret, siliconflow_apikey } = envConfig || {};
     const accessToken = await getAccessToken({ app_id: rainy_night_appId, app_secret: rainy_night_appSecret });
     if (!accessToken) {
         return c.json({ code: 500, message: 'Internal Server Error' });
@@ -69,7 +75,8 @@ export const requestSingleMessage = async (c: Context) => {
 
 export const requestGroupMessage = async (c: Context) => {
     const envConfig = c.env || {};
-    const { rainy_night_appId, rainy_night_appSecret, siliconflow_apikey } = envConfig || {};
+    const { appId: rainy_night_appId, } = botApp.rainy_night
+    const { rainy_night_appSecret, siliconflow_apikey } = envConfig || {};
     const accessToken = await getAccessToken({ app_id: rainy_night_appId, app_secret: rainy_night_appSecret });
     if (!accessToken) {
         return c.json({ code: 500, message: 'Internal Server Error' });
@@ -100,7 +107,8 @@ export const requestGroupMessage = async (c: Context) => {
 
 // 一个定时触发sendGroupMessage的方法
 export const hydrationReminder = async (env: Env) => {
-    const { rainy_night_appId, rainy_night_appSecret, siliconflow_apikey, minimax_group_id, minimax_apikey } = env || {}
+    const { appId: rainy_night_appId, } = botApp.rainy_night
+    const { rainy_night_appSecret, siliconflow_apikey, minimax_group_id, minimax_apikey } = env || {}
     const accessToken = await getAccessToken({ app_id: rainy_night_appId, app_secret: rainy_night_appSecret })
     console.log(`accessToken---->`, accessToken)
     if (!accessToken) {
@@ -149,7 +157,7 @@ export default async (c: Context) => {
         console.log(`body---->`, JSON.stringify(body))
         if (event_type === 'im.message.receive_v1' && event?.message?.content) {
             const longTaskPromise = (async () => {
-                await handleAtMeMessage(event, envConfig)
+                await handleAtMeMessage(event, header,envConfig)
             })()
 
             // 使用 waitUntil() 告诉 Worker 等待这个 Promise 完成
@@ -167,12 +175,15 @@ export default async (c: Context) => {
 // 处理at机器人的消息
 const handleAtMeMessage = async (
     event: { message: Record<string, any>; sender: Record<string, any> },
+    messageHeader: Record<string, any>,
     envConfig: Record<string, string>
 ) => {
     const { message, sender } = event
     const { content, message_id, mentions, chat_type } = message
+    const isAtMessageResult = isAtMessage({message, messageHeader});
+    const { appId: rainy_night_appId, } = botApp.rainy_night
     // 仅处理单聊和群聊at消息
-    if (isAtMessage(message, envConfig.rainy_night_open_id)) {
+    if (isAtMessageResult?.isAtMessage) {
         try {
             const contentJson = JSON.parse(content)
             const { text } = contentJson
@@ -181,15 +192,23 @@ const handleAtMeMessage = async (
 
             const command = isCommand(textWithoutAt)
             console.log(`command---->`, JSON.stringify(command))
+            const accessToken = await getAccessToken({ app_id: isAtMessageResult?.bot?.appId, app_secret: envConfig[`${isAtMessageResult?.bot?.id}_appSecret`] })
             if(command?.command){
                 switch(command.command){
+                    case COMMANDS.SHORTDOMAIN:
+                        const shortDomain = await getShortDomain({text: command.text, sender, envConfig})
+                        await replyMessage('text', JSON.stringify({ text: shortDomain }), message_id, accessToken)
+                        break;
                     case COMMANDS.HELP:
-                        // await replyTextMessage(command.text, message_id, envConfig)
-                        const accessToken = await getAccessToken({ app_id: envConfig.rainy_night_appId, app_secret: envConfig.rainy_night_appSecret })
                         await replyMessage('text', JSON.stringify({ text:  showHelpMessage() }), message_id, accessToken)
                         break;
                     case COMMANDS.IMAGE:
-                        await replyImageMessage(command.text.replace('createImage:', ''), message_id, envConfig)
+                        await replyImageMessage({
+                            messageText: command.text.replace('createImage:', ''),
+                            message_id,
+                            envConfig,
+                            accessToken,
+                        })
                         break;
                     case COMMANDS.SPEAK:
                         await replyAudioMessage({
@@ -197,13 +216,24 @@ const handleAtMeMessage = async (
                             voiceId: command.subCommand,
                             message_id,
                             envConfig,
+                            accessToken,
                         })
                         break;
                     default:
-                        await replyTextMessage(textWithoutAt, message_id, envConfig)
+                        await replyTextMessage({
+                            messageText: textWithoutAt,
+                            message_id,
+                            envConfig,
+                            accessToken,
+                        })
                 }
             } else {
-                await replyTextMessage(textWithoutAt, message_id, envConfig)
+                await replyTextMessage({
+                    messageText: textWithoutAt,
+                    message_id,
+                    envConfig,
+                    accessToken,
+                })
             }
         } catch (error) {
             console.error(error)
@@ -255,11 +285,17 @@ const showHelpMessage = () => {
     return `
     可用的命令：
     /${COMMANDS.IMAGE} 创建图片
+
     /${COMMANDS.SPEAK} 说话
         示例：
         /${COMMANDS.SPEAK}:wangyibo 使用王一博的声音说话
         可用的声音列表：
         ${voiceList}
+        
+    /${COMMANDS.SHORTDOMAIN} 获取自己飞书账号的短域名
+        示例：
+        /${COMMANDS.SHORTDOMAIN} luyia
+        说明：传入想要的名称，会自动生成对应的短域名，用于跳转当前用户的聊天窗口。如果名称已存在，则自动生成一个6位的短域名名称。
     `
 }   
 

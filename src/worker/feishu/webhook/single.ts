@@ -1,4 +1,4 @@
-import { getAccessToken, createUUID, isAtMessage } from './access'
+import { createUUID } from './access'
 import { updateAudio } from './audioHelper'
 import { getSoundMessage } from '../../minimax/index'
 import { getSoundMessage as getSoundMessageBySiliconFlow } from '../../siliconflow/chat'

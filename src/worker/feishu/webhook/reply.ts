@@ -1,4 +1,4 @@
-import { getAccessToken, createUUID, isAtMessage } from './access'
+import { getAccessToken, createUUID } from './access'
 import { uploadImage } from './imageHelper'
 import { getChatMessage, createImage, getSoundMessage as getSoundMessageBySiliconFlow } from '../../siliconflow/chat'
 import { updateAudio } from './audioHelper'
@@ -32,13 +32,18 @@ export const replyMessage = async (messageType: string, messageContent: string, 
     }
 }
 
-export const replyTextMessage = async (
+export const replyTextMessage = async ({
+    messageText,
+    message_id,
+    envConfig,
+    accessToken,
+}: {
     messageText: string,
     message_id: string,
-    envConfig: Record<string, string>
-): Promise<Record<string, any>> => {
-    const { rainy_night_appId, rainy_night_appSecret, siliconflow_apikey } = envConfig || {}
-    const accessToken = await getAccessToken({ app_id: rainy_night_appId, app_secret: rainy_night_appSecret })
+    envConfig: Record<string, string>,
+    accessToken: string,
+}): Promise<Record<string, any>> => {
+    const {siliconflow_apikey } = envConfig || {}
     if (!accessToken) {
         return {
             code: 500,
@@ -66,13 +71,18 @@ export const replyTextMessage = async (
 }
 
 // 发送图片消息， 需要先上传图片，获取图片的key，然后以此key发送图片消息
-export const replyImageMessage = async (
+export const replyImageMessage = async ({
+    messageText,
+    message_id,
+    envConfig,
+    accessToken,
+}: {
     messageText: string,
     message_id: string,
-    envConfig: Record<string, string>
-): Promise<Record<string, any>> => {
-    const { rainy_night_appId, rainy_night_appSecret, siliconflow_apikey } = envConfig || {}
-    const accessToken = await getAccessToken({ app_id: rainy_night_appId, app_secret: rainy_night_appSecret })
+    envConfig: Record<string, string>,
+    accessToken: string,
+}): Promise<Record<string, any>> => {
+    const { siliconflow_apikey } = envConfig || {}
     if (!accessToken) {
         return {
             code: 500,
@@ -112,14 +122,15 @@ export const replyAudioMessage = async ({
     voiceId,
     message_id,
     envConfig,
+    accessToken,
 }: {
     messageText: string,
     voiceId: string,
     message_id: string,
-    envConfig: Record<string, string>
+    envConfig: Record<string, string>,
+    accessToken: string,
 }): Promise<Record<string, any>> => {
-    const { rainy_night_appId, rainy_night_appSecret, siliconflow_apikey } = envConfig || {}
-    const accessToken = await getAccessToken({ app_id: rainy_night_appId, app_secret: rainy_night_appSecret })
+    const { siliconflow_apikey } = envConfig || {}
     if (!accessToken) {
         return {
             code: 500,
