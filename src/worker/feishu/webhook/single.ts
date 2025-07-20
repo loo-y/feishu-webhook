@@ -14,27 +14,42 @@ export const sendSingleMessageByEmail = async ({
 }: {
     messageType: string, messageContent: string, userEmail: string, accessToken: string}) => {
     const url = `https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=email`
+    let body: Record<string, any> = {
+        receive_id: userEmail,
+        content: messageContent,
+        msg_type: messageType,
+        uuid: createUUID(),
+    }
     try {
+        body = {
+            receive_id: userEmail,
+            content: messageContent,
+            msg_type: messageType,
+            uuid: createUUID(),
+        }
         const response = await fetch(url, {
             method: 'POST',
-            body: JSON.stringify({
-                receive_id: userEmail,
-                content: messageContent,
-                msg_type: messageType,
-                uuid: createUUID(),
-            }),
+            body: JSON.stringify(body),
             headers: {
                 Authorization: `Bearer ${accessToken}`,
                 'Content-Type': 'application/json; charset=utf-8',
             },
         })
         const data: Record<string, any> = await response.json()
+        if(data?.error){
+            return {
+                ...data,
+                body,
+            }
+        }
         return data
     } catch (error) {
         console.log(`error--->`, String(error))
         return {
             code: 500,
             message: 'Internal Server Error',
+            error: String(error),
+            body,
         }
     }
 }

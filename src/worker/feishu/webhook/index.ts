@@ -43,16 +43,32 @@ export const requestSingleMessage = async (c: Context) => {
     const { rainy_night_appSecret, siliconflow_apikey } = envConfig || {};
     const accessToken = await getAccessToken({ app_id: rainy_night_appId, app_secret: rainy_night_appSecret });
     if (!accessToken) {
-        return c.json({ code: 500, message: 'Internal Server Error' });
+        return c.json({ code: 500, message: 'Internal Server Error no accessToken' });
     }
 
-    const { message_text, email, attach_audio, voiceid, speed } = await extractParams(c, ['message_text', 'email', 'attach_audio', 'voiceid', 'speed']);
+    const { message_text, email, attach_audio, voiceid, speed, message_type, card_template_id, card_template_version, card_template_variable } = await extractParams(c, ['message_text', 'email', 'attach_audio', 'voiceid', 'speed', 'message_type', 'card_template_id', 'card_template_version', 'card_template_variable']);
     const attachAudio = attach_audio === '1' || attach_audio === true;
     const voiceId = voiceid;
     const speedNum = speed ? Number(speed) : 1;
 
-    if (!message_text || !email) {
-        return c.json({ code: 500, message: 'Internal Server Error' });
+    if ((!message_text && !message_type) || !email) {
+        return c.json({ code: 500, message: 'Internal Server Error no message_text or email' });
+    }
+    if(message_type === 'interactive' && card_template_id && card_template_version && card_template_variable){
+        const result = await sendSingleMessageByEmail({
+            messageType: 'interactive',
+            messageContent: JSON.stringify({ 
+                type: 'template',
+                data: {
+                    template_id: card_template_id,
+                    template_version_name: card_template_version,
+                    template_variable: typeof card_template_variable === 'string' ? JSON.parse(card_template_variable) : card_template_variable,
+                }
+             }),
+            userEmail: email,
+            accessToken,
+        });
+        return c.json(result);
     }
 
     const result = attachAudio ? await sendSingleMessageByEmailWithAudio({
@@ -79,15 +95,33 @@ export const requestGroupMessage = async (c: Context) => {
     const { rainy_night_appSecret, siliconflow_apikey } = envConfig || {};
     const accessToken = await getAccessToken({ app_id: rainy_night_appId, app_secret: rainy_night_appSecret });
     if (!accessToken) {
-        return c.json({ code: 500, message: 'Internal Server Error' });
+        return c.json({ code: 500, message: 'Internal Server Error no accessToken' });
     }
 
-    const { message_text, group_id, attach_audio } = await extractParams(c, ['message_text', 'group_id', 'attach_audio']);
+    const { message_text, group_id, attach_audio, message_type, card_template_id, card_template_version, card_template_variable } = await extractParams(c, ['message_text', 'group_id', 'attach_audio', 'message_type', 'card_template_id', 'card_template_version', 'card_template_variable']);
     const attachAudio = attach_audio === '1' || attach_audio === true;
 
-    if (!message_text || !group_id) {
-        return c.json({ code: 500, message: 'Internal Server Error' });
+    if ((!message_text && !message_type) || !group_id) {
+        return c.json({ code: 500, message: 'Internal Server Error no message_text or group_id' });
     }
+
+    if(message_type === 'interactive' && card_template_id && card_template_version && card_template_variable){
+        const result = await sendGroupMessage({
+            group_id,
+            messageType: 'interactive',
+            messageContent: JSON.stringify({ 
+                type: 'template',
+                data: {
+                    template_id: card_template_id,
+                    template_version_name: card_template_version,
+                    template_variable: typeof card_template_variable === 'string' ? JSON.parse(card_template_variable) : card_template_variable,
+                }
+            }),
+            accessToken,
+        })  
+        return c.json(result);
+    }
+
     console.log(`messageText---->`, message_text);
     const result: Record<string, any> = attachAudio ? await sendGroupMessageWithAudio({
         group_id,
