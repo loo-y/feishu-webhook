@@ -157,7 +157,7 @@ export const hydrationReminder = async (env: Env) => {
     const minute = now.getUTCMinutes()
     // 转换为utc+8小时
     const hour_utc8 = hour + 8
-    const voiceId = 'susu'
+    const voiceId = 'wangyibo'
     const getAIReminderText = await getChatMessage({
         message: `你是一个飞书机器人，主要作用是定时提醒群里面的人喝水，我们的日常工作时间是10:00到19:00(弹性工时，大致是这个时间)，现在是${hour_utc8}点${minute}分左右，你可以结合工作时间段，请你给出一句对应的喝水提醒话术，要幽默/鼓励/有趣。话术内不要有具体的时间点。只需要给出话术，不需要其他额外的任何内容。`,
         token: siliconflow_apikey,
@@ -167,7 +167,7 @@ export const hydrationReminder = async (env: Env) => {
     const waterMessage = getAIReminderText || getHydrationMessageByHour(hour)
     const result = await sendGroupMessageWithAudio({
         group_id,
-        messageText: `苏苏提醒您： ${waterMessage}`,
+        messageText: `${waterMessage}`,
         accessToken,
         // soundAPI_group_id: minimax_group_id,
         // soundAPI_api_key: minimax_apikey,
